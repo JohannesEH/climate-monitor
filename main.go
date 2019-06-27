@@ -8,12 +8,6 @@ import (
 	"periph.io/x/periph/host"
 )
 
-const (
-	BUS_NUMBER         = 1
-	CHIP_ADDR          = 0x5a
-	CCS811_STATUS_ADDR = 0x00
-)
-
 func main() {
 	host.Init()
 
