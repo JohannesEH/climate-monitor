@@ -84,7 +84,7 @@ func main() {
 	fmt.Println("Sensor Values:")
 	fmt.Println("========================================================================")
 	fmt.Println("ECO2:         ", val.ECO2, "ppm")
-	fmt.Println("VOC:          ", val.VOC)
+	fmt.Println("VOC:          ", val.VOC, "ppb")
 	fmt.Println("")
 	fmt.Println("")
 	// fmt.Println("Err:          ", val.Error)
