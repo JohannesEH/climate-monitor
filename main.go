@@ -18,6 +18,8 @@ func checkErr(err error) {
 func main() {
 	host.Init()
 
+	// set baseline = 0x44 0x7a (or lower)
+
 	bus, err := i2creg.Open("")
 	checkErr(err)
 
