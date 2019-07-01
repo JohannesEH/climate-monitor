@@ -18,8 +18,6 @@ func checkErr(err error) {
 func main() {
 	host.Init()
 
-	// set baseline = 0x44 0x7a (or lower)
-
 	bus, err := i2creg.Open("")
 	checkErr(err)
 
@@ -30,6 +28,10 @@ func main() {
 	checkErr(err)
 
 	fwData, err := dev.GetFirmwareData()
+	checkErr(err)
+
+	// set baseline = 0xf4 0x79 (or lower)
+	err = dev.SetBaseline([]byte{0xf4, 0x79})
 	checkErr(err)
 
 	fmt.Println("")
@@ -80,7 +82,7 @@ func main() {
 			fmt.Println("Voltage: ", val.RawDataVoltage)
 		}
 
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 
