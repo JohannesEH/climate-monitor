@@ -2,50 +2,33 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"periph.io/x/periph/conn/i2c/i2creg"
 	"periph.io/x/periph/experimental/devices/ccs811"
 	"periph.io/x/periph/host"
 )
 
+func checkErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func main() {
 	host.Init()
 
 	bus, err := i2creg.Open("")
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
 	dev, err := ccs811.New(bus, &ccs811.DefaultOpts)
-	if err != nil {
-		panic(err)
-	}
-
-	status, err := dev.ReadStatus()
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
 	mode, err := dev.GetMeasurementModeRegister()
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
 	fwData, err := dev.GetFirmwareData()
-	if err != nil {
-		panic(err)
-	}
-
-	baseline, err := dev.GetBaseline()
-	if err != nil {
-		panic(err)
-	}
-
-	var val = ccs811.SensorValues{}
-	err = dev.Sense(&val)
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
 	fmt.Println("")
 	fmt.Println("========================================================================")
@@ -54,11 +37,8 @@ func main() {
 	fmt.Println("HW Model:     ", dev.String())
 	fmt.Printf("HW Identifier: 0x%X\n", fwData.HWIdentifier)
 	fmt.Printf("HW Version:    0x%X\n", fwData.HWVersion)
-	fmt.Println("Current:      ", val.RawDataCurrent)
-	fmt.Println("Voltage:      ", val.RawDataVoltage)
 	fmt.Println("Boot Version: ", fwData.BootVersion)
 	fmt.Println("App Version:  ", fwData.ApplicationVersion)
-	fmt.Printf("Status:        %b\n", status)
 	fmt.Print("Mode:          ")
 
 	switch mode.MeasurementMode {
@@ -76,16 +56,31 @@ func main() {
 		fmt.Println("Unknown")
 	}
 
-	fmt.Println("Baseline:     ", baseline)
-
-	fmt.Println("")
-	fmt.Println("")
 	fmt.Println("========================================================================")
 	fmt.Println("Sensor Values:")
 	fmt.Println("========================================================================")
-	fmt.Println("ECO2:         ", val.ECO2, "ppm")
-	fmt.Println("VOC:          ", val.VOC, "ppb")
-	fmt.Println("")
-	fmt.Println("")
+
+	for ; true; {
+		status, err := dev.ReadStatus()
+		checkErr(err)
+
+		if status & 0x08 == 0x08 {
+			var val = ccs811.SensorValues{}
+			err = dev.Sense(&val)
+			checkErr(err)
+			baseline, err := dev.GetBaseline()
+			checkErr(err)
+			fmt.Printf("Status: %b, ", status)
+			fmt.Print("Baseline: ", baseline, ", ")
+			fmt.Print("ECO2: ", val.ECO2, "ppm, ")
+			fmt.Print("VOC: ", val.VOC, "ppb, ")
+			fmt.Print("Current: ", val.RawDataCurrent, ", ")
+			fmt.Println("Voltage: ", val.RawDataVoltage)
+		}
+
+		time.Sleep(50 * time.Millisecond)
+	}
+
+
 	// fmt.Println("Err:          ", val.Error)
 }
