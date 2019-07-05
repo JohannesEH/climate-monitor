@@ -43,9 +43,11 @@ const (
 	ccs811RegisterAppVerify     = 0xF3 // 0 bytes
 	ccs811RegisterAppStart      = 0xF4 // 0 bytes
 	ccs811RegisterSWReset       = 0xFF // 4 bytes
+
+	baselineFile = "BASELINE"
 )
 
-var baseline = []byte{253, 184}
+//var baseline = []byte{253, 184}
 
 func main() {
 	mode := os.Args[1]
@@ -153,18 +155,23 @@ func measure(conn string) {
 		fmt.Println("Unknown")
 	}
 
+	fmt.Println("========================================================================")
+	fmt.Println("Sensor Values:")
+	fmt.Println("========================================================================")
+
+	count := 0
+	lowestBaseLine := loadBaseline()
+	lowestBaseLineConverted := binary.LittleEndian.Uint16(lowestBaseLine)
+
+	err = dev.SetBaseline(lowestBaseLine)
+	checkErr(err)
+
 	var val = ccs811.SensorValues{}
 	err = dev.Sense(&val)
 	checkErr(err)
 
-	// set baseline
-	err = dev.SetBaseline(baseline)
-	//err = dev.SetBaseline([]byte{244, 255})
+	err = dev.SetBaseline(lowestBaseLine)
 	checkErr(err)
-
-	fmt.Println("========================================================================")
-	fmt.Println("Sensor Values:")
-	fmt.Println("========================================================================")
 
 	for true {
 		status, err := dev.ReadStatus()
@@ -174,30 +181,81 @@ func measure(conn string) {
 			err = dev.Sense(&val)
 			checkErr(err)
 
+			now := time.Now().UTC()
+
 			baseline, err := dev.GetBaseline()
 			checkErr(err)
 
 			baselineConverted := binary.LittleEndian.Uint16(baseline)
 
-			now := time.Now().UTC()
+			if baselineConverted < lowestBaseLineConverted {
+				lowestBaseLine = baseline
+				lowestBaseLineConverted = baselineConverted
+				saveBaseline(baseline)
+			}
 
 			fmt.Print("Time: ", now.Format(time.RFC3339), ", ")
 			fmt.Printf("Status: %b, ", status)
-			fmt.Print("Baseline: ", baseline, baselineConverted, ", ")
 			fmt.Print("ECO2: ", val.ECO2, "ppm, ")
 			fmt.Print("VOC: ", val.VOC, "ppb, ")
 			fmt.Print("Current: ", val.RawDataCurrent, ", ")
-			fmt.Println("Voltage: ", val.RawDataVoltage)
+			fmt.Print("Voltage: ", val.RawDataVoltage, ", ")
+			fmt.Println("Baseline: ", baseline, baselineConverted)
 
 			sqlStatement := `INSERT INTO ccs811 (time, ipaddress, baseline, eco2, etvoc, current, voltage) VALUES ($1, $2, $3, $4, $5, $6, $7)`
 			_, err = db.Exec(sqlStatement, now, myIP.String(), baselineConverted, val.ECO2, val.VOC, val.RawDataCurrent, val.RawDataVoltage)
-			if err != nil {
-				panic(err)
+			checkErr(err)
+
+			count++
+
+			if count%300 == 0 {
+				err = dev.SetBaseline(lowestBaseLine)
+				checkErr(err)
+
+				count = 0
 			}
 		}
 
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+func loadBaseline() []byte {
+	_, err := os.Stat(baselineFile)
+
+	if os.IsNotExist(err) {
+		return []byte{0xFF, 0xFF}
+	}
+
+	checkErr(err)
+
+	file, err := os.Open(baselineFile)
+	checkErr(err)
+	defer file.Close()
+
+	stats, err := file.Stat()
+	checkErr(err)
+
+	size := stats.Size()
+	bytes := make([]byte, size)
+
+	rdr := bufio.NewReader(file)
+	_, err = rdr.Read(bytes)
+
+	return bytes
+}
+
+func saveBaseline(baseline []byte) {
+	file, err := os.Create(baselineFile)
+	checkErr(err)
+	defer file.Close()
+
+	wrt := bufio.NewWriter(file)
+	_, err = wrt.Write(baseline)
+	checkErr(err)
+
+	err = wrt.Flush()
+	checkErr(err)
 }
 
 func flash(imagePath string) {
