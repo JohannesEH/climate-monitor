@@ -206,9 +206,10 @@ func measure(conn string) {
 			_, err = db.Exec(sqlStatement, now, myIP.String(), baselineConverted, val.ECO2, val.VOC, val.RawDataCurrent, val.RawDataVoltage)
 			checkErr(err)
 
-			count++
+			count = count + 1
 
 			if count%300 == 0 {
+				fmt.Println("setting baseline", lowestBaseLine, lowestBaseLineConverted)
 				err = dev.SetBaseline(lowestBaseLine)
 				checkErr(err)
 
