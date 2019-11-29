@@ -1,8 +1,9 @@
 module github.com/JohannesEH/climate-monitor
 
-go 1.12
+go 1.13
 
 require (
-	github.com/lib/pq v1.1.1
-	periph.io/x/periph v0.0.0-20190218125427-df7c7a4f8f86
+	github.com/lib/pq v1.2.0 // indirect
+	github.com/stianeikeland/go-rpio/v4 v4.4.0
+	periph.io/x/periph v3.6.2+incompatible // indirect
 )

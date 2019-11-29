@@ -1,4 +1,4 @@
-package main
+package old_main_ccs811
 
 import (
 	"bufio"
